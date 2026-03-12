@@ -1,3 +1,8 @@
+body{
+    background-color: #FFFFFF;
+    padding-top: 105px;
+    padding-left: 20px;
+}
 header{
     background-color: #b3504c;
     position:fixed;
@@ -8,11 +13,6 @@ header{
     border-bottom-width: 2px;
     border-bottom-style: solid;
     border-bottom-color: black;
-}
-body{
-    background-color: #FFFFFF;
-    padding-top: 105px;
-    padding-left: 20px;
 }
 .maintitle{ 
     vertical-align: top;

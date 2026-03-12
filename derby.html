@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<link rel="stylesheet" href="stylemc.css">
+<html lang="en">
+<head>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Obse Derby</title>
+    <style>
+        :root { --track-bg: #2e7d32; --panel-bg: #1e1e1e; --finish-color: #ffd700; }
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #eee; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        
+        .race-track { 
+            background: var(--track-bg); border: 6px solid #4e342e; border-radius: 12px; 
+            width: 95%; max-width: 1100px; padding: 0 0 0 10px; position: relative; overflow: hidden; 
+        }
+
+        /* Lane Layout */
+        .lane { height: 60px; border-bottom: 1px dashed rgba(255,255,255,0.15); position: relative; display: flex; align-items: center; }
+        .lane-id { width: 30px; font-weight: 900; color: rgba(255,255,255,0.3); }
+        .lane-name { width: 100px; font-size: 0.7rem; font-weight: bold; border-right: 2px solid rgba(255,255,255,0.2); margin-right: 10px; }
+
+        /* The Finish Area: Positioned at the very end (Step 15) */
+        .finish-line { 
+            position: absolute; right: 0; top: 0; bottom: 0; width: 60px; 
+            background: repeating-linear-gradient(45deg, #fff, #fff 10px, #000 10px, #000 20px);
+            border-left: 4px solid var(--finish-color); opacity: 0.9; z-index: 1;
+        }
+
+        .horse { 
+            width: 50px; height: 50px; position: absolute; left: 140px; 
+            transition: left 0.6s cubic-bezier(0.25, 1, 0.5, 1); 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 30px; border-radius: 50%; background: rgba(0,0,0,0.3);
+            border: 3px solid transparent; z-index: 10;
+        }
+
+        /* UI */
+        .ui-panel { margin-top: 20px; background: var(--panel-bg); padding: 20px; border-radius: 15px; width: 480px; text-align: center; border: 1px solid #333; }
+        .card-info { font-size: 1.4rem; font-weight: bold; margin-bottom: 10px; color: #ffeb3b; min-height: 1.5em; }
+        .btn-group { display: flex; gap: 8px; justify-content: center; }
+        
+        button { padding: 12px 18px; font-size: 0.85rem; cursor: pointer; border: none; border-radius: 6px; font-weight: bold; text-transform: uppercase; }
+        #draw-btn { background: #1976d2; color: white; flex: 2; }
+        #auto-btn { background: #6a1b9a; color: white; flex: 2; }
+        #auto-btn.active { background: #f44336; }
+        #restart-btn { background: #455a64; color: white; flex: 1; }
+        
+        .winner-txt { color: #4caf50 !important; font-size: 1.8rem !important; transform: scale(1.1); transition: 0.3s; }
+    </style>
+</head>
+<body>
+	<header>
+        <div style="display: grid;
+        grid-template-columns: 6fr 1fr;">
+            <div>
+                <a href="/" class="maintitle" >tamarindo.cc</a>
+            </div>
+            <div>
+                <a href="/info.html"><button class="titlebutton">Informacion</button></a>
+            </div>
+        </div>
+    </header>
+    <br>
+    <br>
+    <h1>Obse Derby 2026</h1>
+
+    <div class="race-track" id="track">
+        <div class="finish-line"></div>
+        </div>
+
+    <div class="ui-panel">
+        <div id="card-message" class="card-info">Press Start</div>
+        <div id="deck-status" style="font-size: 0.8rem; color: #888; margin-bottom: 15px;">Deck: 133 cards</div>
+        
+        <div class="btn-group">
+            <button id="draw-btn" onclick="manualDraw()">Manual Draw</button>
+            <button id="auto-btn" onclick="toggleAuto()">Auto: OFF</button>
+            <button id="restart-btn" onclick="resetRace()">Reset</button>
+        </div>
+        
+        <div id="action-trail" style="margin-top: 15px; font-size: 0.65rem; color: #444; font-family: monospace;">Awaiting trail...</div>
+    </div>
+
+    <script>
+        const GOAL = 15;
+        const OFFSET_START = 140; // Pixels from left for start
+        const HORSE_DEFS = [
+            { id: 'h1', name: 'Ares', color: '#ff1744' },
+            { id: 'h2', name: 'Poseidon', color: '#2979ff' },
+            { id: 'h3', name: 'Artemis', color: '#00e676' },
+            { id: 'h4', name: 'Apollo', color: '#ffea00' },
+            { id: 'h5', name: 'Hades', color: '#d500f9' },
+            { id: 'h6', name: 'Hephaestus', color: '#ff9100' },
+            { id: 'h7', name: 'Aphrodite', color: '#f50057' }
+        ];
+
+        let state = { deck: [], horses: [], isFinished: false, timer: null };
+
+        function init() {
+            const track = document.getElementById('track');
+            track.innerHTML = '<div class="finish-line"></div>';
+
+            state.horses = HORSE_DEFS.map((h, i) => {
+                const lane = document.createElement('div');
+                lane.className = 'lane';
+                lane.innerHTML = `
+                    <div class="lane-id">${i + 1}</div>
+                    <div class="lane-name" style="color: ${h.color}">${h.name}</div>
+                    <div id="${h.id}" class="horse" style="border-color: ${h.color}">🐎</div>
+                `;
+                track.appendChild(lane);
+                return { ...h, pos: 0 };
+            });
+
+            buildDeck();
+        }
+
+        function buildDeck() {
+            state.deck = [];
+            state.horses.forEach(h => {
+                const rules = [{s:1, q:8}, {s:2, q:6}, {s:3, q:3}, {s:4, q:2}];
+                rules.forEach(r => {
+                    for(let i=0; i<r.q; i++) state.deck.push({ id: h.id, val: r.s });
+                });
+            });
+            state.deck.sort(() => Math.random() - 0.5);
+            updateDeckUI();
+        }
+
+        function executeTurn() {
+            if (state.isFinished || state.deck.length === 0) return stopAuto();
+
+            const card = state.deck.pop();
+            const horse = state.horses.find(h => h.id === card.id);
+            
+            // LOGIC: Separation between Identifier and Validation
+            horse.pos += card.val;
+            
+            // RENDERING: We calculate the track width minus the start offset and horse width
+            const horseEl = document.getElementById(horse.id);
+            const trackWidth = document.querySelector('.race-track').offsetWidth - 200; 
+            const movePx = (horse.pos / GOAL) * trackWidth;
+            
+            horseEl.style.left = `${OFFSET_START + movePx}px`;
+
+            updateUI(`${horse.name} +${card.val}`);
+            updateDeckUI();
+            logTrail(`Move: ${horse.id} is now at ${horse.pos}/15`);
+
+            // VALIDATION: Does it reach or exceed 15?
+            if (horse.pos >= GOAL) {
+                state.isFinished = true;
+                stopAuto();
+                announceWinner(horse);
+            }
+        }
+
+        function toggleAuto() {
+            const btn = document.getElementById('auto-btn');
+            if (state.timer) {
+                stopAuto();
+            } else {
+                if (state.isFinished) return;
+                btn.innerText = "Auto: ON";
+                btn.classList.add('active');
+                state.timer = setInterval(executeTurn, 1000);
+            }
+        }
+
+        function stopAuto() {
+            clearInterval(state.timer);
+            state.timer = null;
+            const btn = document.getElementById('auto-btn');
+            btn.innerText = "Auto: OFF";
+            btn.classList.remove('active');
+        }
+
+        function manualDraw() { stopAuto(); executeTurn(); }
+
+        function resetRace() {
+            stopAuto();
+            state.isFinished = false;
+            document.getElementById('card-message').classList.remove('winner-txt');
+            init();
+        }
+
+        function announceWinner(horse) {
+            const msg = document.getElementById('card-message');
+            msg.innerText = `🏆 ${horse.name} CROSSES THE LINE!`;
+            msg.classList.add('winner-txt');
+        }
+
+        function updateUI(t) { document.getElementById('card-message').innerText = t; }
+        function updateDeckUI() { document.getElementById('deck-status').innerText = `Cards: ${state.deck.length}`; }
+        function logTrail(m) { document.getElementById('action-trail').innerText = `[TRAIL] ${m}`; }
+
+        init();
+    </script>
+</body>
+</html>
