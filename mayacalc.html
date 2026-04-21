@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mayan Scientific - Ultimate Edition</title>
+    <style>
+        :root {
+            --calc-body: #2d2d2d;
+            --screen-bg: #8ba888;
+            --screen-text: #1a1c1a;
+            --btn-num: #e0e0e0;
+            --btn-op: #cccccc;
+            --btn-sci: #4a4a4a;
+            --btn-eq: #f2a154;
+            --btn-toggle: #54a2f2;
+            --glyph-color: #1a1c1a;
+        }
+
+        body {
+            background-color: #1e1e1e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .calculator {
+            background: var(--calc-body);
+            width: 400px;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            border: 1px solid #444;
+        }
+
+        .screen-container {
+            background: var(--screen-bg);
+            height: 120px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            border: 3px solid #111;
+            padding: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 10px;
+            overflow-y: auto;
+            box-shadow: inset 0 4px 10px rgba(0,0,0,0.3);
+            color: var(--screen-text);
+        }
+
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+        }
+
+        button {
+            height: 48px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.1s;
+        }
+
+        button:active { transform: translateY(2px); filter: brightness(0.8); }
+
+        .btn-num { background: var(--btn-num); color: #000; }
+        .btn-sci { background: var(--btn-sci); color: #fff; font-size: 0.7rem; }
+        .btn-op { background: var(--btn-op); color: #000; font-size: 1rem; }
+        .btn-eq { background: var(--btn-eq); color: #fff; font-size: 1.1rem; }
+        .btn-clr { background: #8e2424; color: #fff; }
+        .btn-del { background: #c57d22; color: #fff; }
+        .btn-toggle { background: var(--btn-toggle); color: #fff; }
+
+        .glyph-stack { display: flex; flex-direction: row-reverse; gap: 4px; align-items: center; border: 1px solid rgba(0,0,0,0.1); padding: 2px; border-radius: 3px; }
+        .glyph { display: flex; flex-direction: column-reverse; align-items: center; gap: 2px; }
+        .dot-row { display: flex; gap: 2px; }
+        .dot { width: 4px; height: 4px; background: var(--glyph-color); border-radius: 50%; }
+        .bar { width: 18px; height: 3px; background: var(--glyph-color); border-radius: 1px; }
+        .shell { width: 16px; height: 8px; border: 1.2px solid var(--glyph-color); border-radius: 50% 50% 40% 40%; position: relative; }
+        .shell::after { content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: var(--glyph-color); }
+        
+        .op-text { font-size: 1.2rem; font-weight: bold; padding: 0 5px; }
+        .arabic-text { font-family: monospace; font-size: 1.1rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="calculator">
+    <div class="screen-container" id="display"></div>
+    <div class="keypad" id="keypad"></div>
+</div>
+
+<script>
+    const display = document.getElementById('display');
+    const keypad = document.getElementById('keypad');
+    let currentInput = 0;
+    let expression = []; 
+    let isArabicMode = false;
+
+    function createGlyphHTML(n) {
+        if (n === 0) return `<div class="glyph"><div class="shell"></div></div>`;
+        let html = '<div class="glyph">';
+        const bars = Math.floor(n / 5);
+        const dots = n % 5;
+        for (let i = 0; i < bars; i++) html += `<div class="bar"></div>`;
+        if (dots > 0) {
+            html += '<div class="dot-row">';
+            for (let i = 0; i < dots; i++) html += `<div class="dot"></div>`;
+            html += '</div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    function toBase20(n) {
+        let num = Math.abs(Math.floor(n));
+        if (num === 0) return [0];
+        let digits = [];
+        while (num > 0) {
+            digits.push(num % 20);
+            num = Math.floor(num / 20);
+        }
+        return digits;
+    }
+
+    function renderValue(val) {
+        if (isArabicMode) return `<span class="arabic-text">${Math.floor(val)}</span>`;
+        const digits = toBase20(val);
+        return `<div class="glyph-stack">${digits.map(d => createGlyphHTML(d)).join('')}</div>`;
+    }
+
+    function updateDisplay() {
+        let html = '';
+        expression.forEach(item => {
+            if (item.type === 'n') html += renderValue(item.v);
+            else html += `<span class="op-text">${item.v}</span>`;
+        });
+        html += renderValue(currentInput);
+        display.innerHTML = html;
+        display.scrollTop = display.scrollHeight;
+    }
+
+    const handleNum = (n) => { currentInput = (currentInput * 20) + n; updateDisplay(); };
+    const handleOp = (op) => { expression.push({type: 'n', v: currentInput}, {type: 'o', v: op}); currentInput = 0; updateDisplay(); };
+    
+    const calculate = () => {
+        expression.push({type: 'n', v: currentInput});
+        let res = expression[0].v;
+        for(let i = 1; i < expression.length; i += 2) {
+            const o = expression[i].v;
+            const n = expression[i+1].v;
+            if(o === '+') res += n;
+            if(o === '-') res -= n;
+            if(o === '*') res *= n;
+            if(o === '/') res /= n;
+            if(o === '^') res = Math.pow(res, n);
+        }
+        currentInput = Math.floor(res);
+        expression = [];
+        updateDisplay();
+    };
+
+    const sci = (f) => {
+        let r = currentInput;
+        const toRad = (d) => d * Math.PI / 180;
+        const toDeg = (r) => r * 180 / Math.PI;
+        if(f === 'sin') r = Math.sin(toRad(r));
+        if(f === 'cos') r = Math.cos(toRad(r));
+        if(f === 'tan') r = Math.tan(toRad(r));
+        if(f === 'asin') r = toDeg(Math.asin(r));
+        if(f === 'acos') r = toDeg(Math.acos(r));
+        if(f === 'atan') r = toDeg(Math.atan(r));
+        if(f === 'log') r = Math.log10(r);
+        if(f === 'exp') r = Math.exp(r);
+        if(f === 'sqrt') r = Math.sqrt(r);
+        currentInput = Math.floor(r);
+        updateDisplay();
+    };
+
+    const buttons = [
+        { l: 'AC', c: 'btn-clr', a: () => { currentInput = 0; expression = []; updateDisplay(); } },
+        { l: 'DEL', c: 'btn-del', a: () => { currentInput = Math.floor(currentInput / 20); updateDisplay(); } },
+        { l: 'log', c: 'btn-sci', a: () => sci('log') },
+        { l: 'exp', c: 'btn-sci', a: () => sci('exp') },
+        { l: '^', c: 'btn-op', a: () => handleOp('^') },
+        { l: 'sin', c: 'btn-sci', a: () => sci('sin') },
+        { l: 'cos', c: 'btn-sci', a: () => sci('cos') },
+        { l: 'tan', c: 'btn-sci', a: () => sci('tan') },
+        { l: '√', c: 'btn-sci', a: () => sci('sqrt') },
+        { l: '/', c: 'btn-op', a: () => handleOp('/') },
+        { l: 'asin', c: 'btn-sci', a: () => sci('asin') },
+        { l: 'acos', c: 'btn-sci', a: () => sci('acos') },
+        { l: 'atan', c: 'btn-sci', a: () => sci('atan') },
+        { l: '*', c: 'btn-op', a: () => handleOp('*') },
+        { l: '-', c: 'btn-op', a: () => handleOp('-') },
+        { l: '+', c: 'btn-op', a: () => handleOp('+'), span: 5 }
+    ];
+
+    buttons.forEach(b => {
+        const btn = document.createElement('button');
+        btn.className = b.c;
+        btn.innerHTML = b.l;
+        if(b.span) btn.style.gridColumn = `span ${b.span}`;
+        btn.onclick = b.a;
+        keypad.appendChild(btn);
+    });
+
+    for(let i = 0; i < 20; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'btn-num';
+        btn.innerHTML = createGlyphHTML(i);
+        btn.onclick = () => handleNum(i);
+        keypad.appendChild(btn);
+    }
+
+    const footer = [
+        { l: 'MAYAN/123', c: 'btn-toggle', a: () => { isArabicMode = !isArabicMode; updateDisplay(); }, span: 2 },
+        { l: '=', c: 'btn-eq', a: calculate, span: 3 }
+    ];
+
+    footer.forEach(b => {
+        const btn = document.createElement('button');
+        btn.className = b.c;
+        btn.innerHTML = b.l;
+        btn.style.gridColumn = `span ${b.span}`;
+        btn.onclick = b.a;
+        keypad.appendChild(btn);
+    });
+
+    updateDisplay();
+</script>
+</body>
+</html>
