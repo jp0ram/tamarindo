@@ -418,12 +418,12 @@
         { l: 'log', c: 'btn-sci', a: () => sci('log') },
         { l: 'exp', c: 'btn-sci', a: () => sci('exp') },
         { l: '√', c: 'btn-sci', a: () => sci('sqrt') },
-        { l: '^', c: 'btn-op', a: () => handleOp('^') },
-        { l: '+', c: 'btn-op', a: () => handleOp('+') },
-        { l: '-', c: 'btn-op', a: () => handleOp('-') },
-        { l: '*', c: 'btn-op', a: () => handleOp('*') },
-        { l: '/', c: 'btn-op', a: () => handleOp('/') },
-        { l: '=', c: 'btn-eq', a: calculate } 
+        { l: '=', c: 'btn-eq', a: calculate },
+        { l: '+', c: 'btn-sci', a: () => handleOp('+') },
+        { l: '-', c: 'btn-sci', a: () => handleOp('-') },
+        { l: '*', c: 'btn-sci', a: () => handleOp('*') },
+        { l: '/', c: 'btn-sci', a: () => handleOp('/') },
+        { l: '^', c: 'btn-sci', a: () => handleOp('^') }
     ];
 
     operators.forEach(b => {
