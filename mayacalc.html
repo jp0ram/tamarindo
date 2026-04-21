@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mayan Scientific - Ultimate Edition</title>
+    <title>Calculadora Maya</title>
     <style>
         :root {
             --calc-body: #2d2d2d;
@@ -21,10 +21,79 @@
             background-color: #1e1e1e;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
             min-height: 100vh;
             margin: 0;
             font-family: 'Segoe UI', sans-serif;
+            padding: 40px 20px;
+            box-sizing: border-box;
+        }
+
+        .main-wrapper {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            justify-content: center;
+            max-width: 1100px;
+            width: 100%;
+        }
+
+        .side-panel {
+            background: var(--calc-body);
+            color: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            width: 260px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            border: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .side-panel h2 {
+            margin: 0 0 10px 0;
+            color: var(--btn-eq);
+            font-size: 1.3rem;
+            text-align: center;
+            border-bottom: 2px solid #444;
+            padding-bottom: 10px;
+        }
+
+        .converter-group label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+
+        .converter-group input, .info-textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #555;
+            background: #1e1e1e;
+            color: #fff;
+            font-family: monospace;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        .info-textarea {
+            resize: vertical;
+            min-height: 200px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .converter-screen {
+            background: var(--screen-bg);
+            border-radius: 4px;
+            border: 3px solid #111;
+            padding: 15px 10px;
+            display: flex;
+            justify-content: center;
+            min-height: 60px;
+            box-shadow: inset 0 4px 10px rgba(0,0,0,0.3);
         }
 
         .calculator {
@@ -34,6 +103,7 @@
             border-radius: 12px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.6);
             border: 1px solid #444;
+            flex-shrink: 0;
         }
 
         .screen-container {
@@ -76,8 +146,8 @@
         button:active { transform: translateY(2px); filter: brightness(0.8); }
 
         .btn-num { background: var(--btn-num); color: #000; }
-        .btn-sci { background: var(--btn-sci); color: #fff; font-size: 0.7rem; }
-        .btn-op { background: var(--btn-op); color: #000; font-size: 1rem; }
+        .btn-sci { background: var(--btn-sci); color: #fff; font-size: 0.8rem; }
+        .btn-op { background: var(--btn-op); color: #000; font-size: 1.1rem; }
         .btn-eq { background: var(--btn-eq); color: #fff; font-size: 1.1rem; }
         .btn-clr { background: #8e2424; color: #fff; }
         .btn-del { background: #c57d22; color: #fff; }
@@ -92,21 +162,104 @@
         .shell::after { content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: var(--glyph-color); }
         
         .op-text { font-size: 1.2rem; font-weight: bold; padding: 0 5px; }
-        .arabic-text { font-family: monospace; font-size: 1.1rem; font-weight: bold; }
+        .arabic-text { font-family: monospace; font-size: 1.2rem; font-weight: bold; }
+        
+        .cursor {
+            width: 2px;
+            height: 24px;
+            background-color: #f2a154;
+            animation: blink 1s step-end infinite;
+            margin: 0 2px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+.main-wrapper {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+    justify-content: center;
+    max-width: 1100px;
+    width: 100%;
+}
+
+/* Responsive adjustments for Mobile */
+@media (max-width: 900px) {
+    body {
+        padding: 10px;
+    }
+
+    .main-wrapper {
+        flex-direction: column;
+        align-items: center; /* Centers the panels vertically */
+        gap: 20px;
+    }
+
+    .calculator {
+        width: 100%; /* Makes calculator responsive to screen width */
+        max-width: 400px;
+        order: 1; /* Calculator shows first */
+    }
+
+    .right-panel {
+        width: 100%;
+        max-width: 400px;
+        order: 2; /* Converter shows second */
+    }
+
+    .left-panel {
+        width: 100%;
+        max-width: 400px;
+        order: 3; /* Information shows third */
+    }
+
+    .side-panel {
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
     </style>
 </head>
 <body>
 
-<div class="calculator">
-    <div class="screen-container" id="display"></div>
-    <div class="keypad" id="keypad"></div>
+<div class="main-wrapper">
+    <div class="side-panel left-panel">
+        <h2>Information</h2>
+        <textarea class="info-textarea" placeholder="Add your notes, information, or instructions here..."></textarea>
+    </div>
+
+    <div class="calculator">
+        <div class="screen-container" id="display"></div>
+        <div class="keypad" id="keypad"></div>
+    </div>
+
+    <div class="side-panel right-panel">
+        <h2>Converter</h2>
+        <div class="converter-group">
+            <label>Base 10:</label>
+            <input type="number" id="convBase10" placeholder="e.g., 400">
+        </div>
+        <div class="converter-group">
+            <label>Base 20 (Spaces):</label>
+            <input type="text" id="convBase20" placeholder="e.g., 1 0 0">
+        </div>
+        <div class="converter-group">
+            <label>Mayan Glyphs:</label>
+            <div id="convGlyphs" class="converter-screen"></div>
+        </div>
+    </div>
 </div>
 
 <script>
+    /* ========================================================
+       CALCULATOR LOGIC
+       ======================================================== */
     const display = document.getElementById('display');
     const keypad = document.getElementById('keypad');
-    let currentInput = 0;
+    
+    // Expression is evaluated organically as a list of cohesive tokens
     let expression = []; 
+    let cursorPos = 0; 
     let isArabicMode = false;
 
     function createGlyphHTML(n) {
@@ -129,7 +282,7 @@
         if (num === 0) return [0];
         let digits = [];
         while (num > 0) {
-            digits.push(num % 20);
+            digits.push(num % 20); 
             num = Math.floor(num / 20);
         }
         return digits;
@@ -143,76 +296,146 @@
 
     function updateDisplay() {
         let html = '';
-        expression.forEach(item => {
-            if (item.type === 'n') html += renderValue(item.v);
-            else html += `<span class="op-text">${item.v}</span>`;
-        });
-        html += renderValue(currentInput);
+        for(let i = 0; i <= expression.length; i++) {
+            if (i === cursorPos) html += '<div class="cursor"></div>';
+            
+            if (i < expression.length) {
+                let item = expression[i];
+                if (item.type === 'n') html += renderValue(item.v);
+                else html += `<span class="op-text">${item.v}</span>`;
+            }
+        }
         display.innerHTML = html;
         display.scrollTop = display.scrollHeight;
     }
 
-    const handleNum = (n) => { currentInput = (currentInput * 20) + n; updateDisplay(); };
-    const handleOp = (op) => { expression.push({type: 'n', v: currentInput}, {type: 'o', v: op}); currentInput = 0; updateDisplay(); };
+    const handleNum = (n) => { 
+        let prev = expression[cursorPos - 1];
+        // If there's a number directly behind the cursor, multiply by 20 and add
+        if (prev && prev.type === 'n') {
+            prev.v = prev.v * 20 + n;
+        } else {
+            // Otherwise, insert a brand new number token
+            expression.splice(cursorPos, 0, {type: 'n', v: n});
+            cursorPos++;
+        }
+        updateDisplay(); 
+    };
+
+    const moveCursor = (dir) => {
+        cursorPos = Math.max(0, Math.min(expression.length, cursorPos + dir));
+        updateDisplay();
+    };
+
+    const handleDelete = () => {
+        if (cursorPos > 0) {
+            let prev = expression[cursorPos - 1];
+            if (prev.type === 'n') {
+                // Base 20 integer division
+                prev.v = Math.floor(prev.v / 20);
+                if (prev.v === 0) { // Clear token entirely if 0
+                    expression.splice(cursorPos - 1, 1);
+                    cursorPos--;
+                }
+            } else {
+                // Delete Operator Token
+                expression.splice(cursorPos - 1, 1);
+                cursorPos--;
+            }
+            updateDisplay();
+        }
+    };
+
+    const handleClear = () => {
+        expression = [];
+        cursorPos = 0;
+        updateDisplay();
+    };
+
+    const handleOp = (op) => { 
+        expression.splice(cursorPos, 0, {type: 'o', v: op}); 
+        cursorPos++;
+        updateDisplay(); 
+    };
     
     const calculate = () => {
-        expression.push({type: 'n', v: currentInput});
-        let res = expression[0].v;
-        for(let i = 1; i < expression.length; i += 2) {
-            const o = expression[i].v;
-            const n = expression[i+1].v;
-            if(o === '+') res += n;
-            if(o === '-') res -= n;
-            if(o === '*') res *= n;
-            if(o === '/') res /= n;
-            if(o === '^') res = Math.pow(res, n);
+        if (expression.length === 0) return;
+        
+        let res = expression[0].type === 'n' ? expression[0].v : 0;
+        
+        for(let i = 0; i < expression.length; i++) {
+            if (expression[i].type === 'o' && i + 1 < expression.length && expression[i+1].type === 'n') {
+                const o = expression[i].v;
+                const n = expression[i+1].v;
+                if(o === '+') res += n;
+                if(o === '-') res -= n;
+                if(o === '*') res *= n;
+                if(o === '/') res /= n;
+                if(o === '^') res = Math.pow(res, n);
+            }
         }
-        currentInput = Math.floor(res);
-        expression = [];
+        res = Math.max(0, Math.floor(res)); 
+        expression = res === 0 ? [] : [{type: 'n', v: res}];
+        cursorPos = expression.length;
         updateDisplay();
     };
 
     const sci = (f) => {
-        let r = currentInput;
-        const toRad = (d) => d * Math.PI / 180;
-        const toDeg = (r) => r * 180 / Math.PI;
-        if(f === 'sin') r = Math.sin(toRad(r));
-        if(f === 'cos') r = Math.cos(toRad(r));
-        if(f === 'tan') r = Math.tan(toRad(r));
-        if(f === 'asin') r = toDeg(Math.asin(r));
-        if(f === 'acos') r = toDeg(Math.acos(r));
-        if(f === 'atan') r = toDeg(Math.atan(r));
-        if(f === 'log') r = Math.log10(r);
-        if(f === 'exp') r = Math.exp(r);
-        if(f === 'sqrt') r = Math.sqrt(r);
-        currentInput = Math.floor(r);
-        updateDisplay();
+        if (cursorPos > 0) {
+            let prev = expression[cursorPos - 1];
+            if (prev.type === 'n') {
+                let r = prev.v;
+                if(f === 'log') r = Math.log10(r);
+                if(f === 'exp') r = Math.exp(r);
+                if(f === 'sqrt') r = Math.sqrt(r);
+                r = Math.max(0, Math.floor(r));
+                
+                if (r === 0) {
+                    expression.splice(cursorPos - 1, 1);
+                    cursorPos--;
+                } else {
+                    prev.v = r;
+                }
+                updateDisplay();
+            }
+        }
     };
 
-    const buttons = [
-        { l: 'AC', c: 'btn-clr', a: () => { currentInput = 0; expression = []; updateDisplay(); } },
-        { l: 'DEL', c: 'btn-del', a: () => { currentInput = Math.floor(currentInput / 20); updateDisplay(); } },
+    /* ========================================================
+       KEYPAD GENERATION
+       ======================================================== */
+    const operators = [
+        { l: 'AC', c: 'btn-clr', a: handleClear },
         { l: 'log', c: 'btn-sci', a: () => sci('log') },
         { l: 'exp', c: 'btn-sci', a: () => sci('exp') },
-        { l: '^', c: 'btn-op', a: () => handleOp('^') },
-        { l: 'sin', c: 'btn-sci', a: () => sci('sin') },
-        { l: 'cos', c: 'btn-sci', a: () => sci('cos') },
-        { l: 'tan', c: 'btn-sci', a: () => sci('tan') },
         { l: '√', c: 'btn-sci', a: () => sci('sqrt') },
-        { l: '/', c: 'btn-op', a: () => handleOp('/') },
-        { l: 'asin', c: 'btn-sci', a: () => sci('asin') },
-        { l: 'acos', c: 'btn-sci', a: () => sci('acos') },
-        { l: 'atan', c: 'btn-sci', a: () => sci('atan') },
-        { l: '*', c: 'btn-op', a: () => handleOp('*') },
+        { l: '^', c: 'btn-op', a: () => handleOp('^') },
+        { l: '+', c: 'btn-op', a: () => handleOp('+') },
         { l: '-', c: 'btn-op', a: () => handleOp('-') },
-        { l: '+', c: 'btn-op', a: () => handleOp('+'), span: 5 }
+        { l: '*', c: 'btn-op', a: () => handleOp('*') },
+        { l: '/', c: 'btn-op', a: () => handleOp('/') },
+        { l: '=', c: 'btn-eq', a: calculate } 
     ];
 
-    buttons.forEach(b => {
+    operators.forEach(b => {
         const btn = document.createElement('button');
         btn.className = b.c;
         btn.innerHTML = b.l;
-        if(b.span) btn.style.gridColumn = `span ${b.span}`;
+        btn.onclick = b.a;
+        keypad.appendChild(btn);
+    });
+
+    const cursorBtns = [
+        { l: '◄ Left', c: 'btn-sci', span: 2, a: () => moveCursor(-1) },
+        { l: 'DEL', c: 'btn-del', span: 1, a: handleDelete },
+        { l: 'Right ►', c: 'btn-sci', span: 2, a: () => moveCursor(1) }
+    ];
+
+    cursorBtns.forEach(b => {
+        const btn = document.createElement('button');
+        btn.className = b.c;
+        btn.innerHTML = b.l;
+        btn.style.gridColumn = `span ${b.span}`;
         btn.onclick = b.a;
         keypad.appendChild(btn);
     });
@@ -225,21 +448,52 @@
         keypad.appendChild(btn);
     }
 
-    const footer = [
-        { l: 'MAYAN/123', c: 'btn-toggle', a: () => { isArabicMode = !isArabicMode; updateDisplay(); }, span: 2 },
-        { l: '=', c: 'btn-eq', a: calculate, span: 3 }
-    ];
-
-    footer.forEach(b => {
-        const btn = document.createElement('button');
-        btn.className = b.c;
-        btn.innerHTML = b.l;
-        btn.style.gridColumn = `span ${b.span}`;
-        btn.onclick = b.a;
-        keypad.appendChild(btn);
-    });
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'btn-toggle';
+    toggleBtn.innerHTML = 'MAYAN / 123';
+    toggleBtn.style.gridColumn = 'span 5';
+    toggleBtn.onclick = () => { isArabicMode = !isArabicMode; updateDisplay(); };
+    keypad.appendChild(toggleBtn);
 
     updateDisplay();
+
+    /* ========================================================
+       CONVERTER LOGIC
+       ======================================================== */
+    const convBase10 = document.getElementById('convBase10');
+    const convBase20 = document.getElementById('convBase20');
+    const convGlyphs = document.getElementById('convGlyphs');
+
+    convBase10.addEventListener('input', (e) => {
+        let val = parseInt(e.target.value);
+        if (isNaN(val) || val < 0) { 
+            convBase20.value = ''; 
+            convGlyphs.innerHTML = ''; 
+            return; 
+        }
+        let digitsArray = toBase20(val); 
+        let displayStr = [...digitsArray].reverse().join(' '); 
+        convBase20.value = displayStr;
+        convGlyphs.innerHTML = `<div class="glyph-stack">${digitsArray.map(d => createGlyphHTML(d)).join('')}</div>`;
+    });
+
+    convBase20.addEventListener('input', (e) => {
+        let str = e.target.value.trim();
+        if (!str) { 
+            convBase10.value = ''; 
+            convGlyphs.innerHTML = ''; 
+            return; 
+        }
+        let digits = str.split(/\s+/).map(Number);
+        if (digits.some(isNaN) || digits.some(d => d < 0 || d > 19)) return;
+        
+        let val = digits.reduce((acc, d) => acc * 20 + d, 0);
+        convBase10.value = val;
+        
+        let glyphArray = toBase20(val);
+        convGlyphs.innerHTML = `<div class="glyph-stack">${glyphArray.map(d => createGlyphHTML(d)).join('')}</div>`;
+    });
+
 </script>
 </body>
 </html>
