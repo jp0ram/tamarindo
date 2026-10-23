@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Texas Hold’em · Card Table</title><link rel="stylesheet" href="style.css"></head>
+<body><div class="wrap">
+<div class="topbar"><a class="btn menu-link" href="index.html">← Main menu</a><h2>Texas Hold’em</h2></div>
+<p class="rules">Heads-up against the computer, no betting. Each round reveals the flop, turn and river; the best five-card hand wins at the showdown.</p>
+<div class="table"><div class="pile"></div>
+<div class="label">Computer <span id="bh"></span></div><div class="cards" id="bot"></div>
+<div class="label">Community cards</div><div class="cards" id="board"></div>
+<div class="label">You <span id="yh"></span></div><div class="cards" id="you"></div>
+<div class="status" id="status">Press Deal to start.</div>
+<div class="controls"><button class="btn primary" id="go">Deal</button></div>
+</div></div>
+<script src="decks.js"></script><script src="shared.js"></script>
+<script>CT.init();
+
+const $=id=>document.getElementById(id);
+const NAMES=['High card','One pair','Two pair','Three of a kind','Straight','Flush','Full house','Four of a kind','Straight flush'];
+function combos(a,k){const o=[];(function g(s,c){if(c.length===k){o.push(c);return}for(let i=s;i<=a.length-(k-c.length);i++)g(i+1,[...c,a[i]])})(0,[]);return o}
+function cmp(a,b){for(let i=0;i<Math.max(a.length,b.length);i++){const d=(a[i]||0)-(b[i]||0);if(d)return d}return 0}
+function five(cs){
+  const vals=cs.map(c=>c.v).sort((a,b)=>b-a),cnt={};cs.forEach(c=>cnt[c.v]=(cnt[c.v]||0)+1);
+  const g=Object.entries(cnt).map(([v,n])=>({v:+v,n})).sort((a,b)=>b.n-a.n||b.v-a.v),ks=g.map(x=>x.v);
+  const flush=cs.every(c=>c.s===cs[0].s);let u=[...new Set(vals)];if(u.includes(14))u.push(1);
+  let sh=0;for(let i=0;i<=u.length-5;i++)if(u[i]-u[i+4]===4){sh=u[i];break}
+  if(flush&&sh)return[8,sh];if(g[0].n===4)return[7,...ks];if(g[0].n===3&&g[1].n===2)return[6,...ks];
+  if(flush)return[5,...vals];if(sh)return[4,sh];if(g[0].n===3)return[3,...ks];
+  if(g[0].n===2&&g[1].n===2)return[2,...ks];if(g[0].n===2)return[1,...ks];return[0,...vals];
+}
+const best=cs=>combos(cs,5).map(five).sort((a,b)=>cmp(b,a))[0];
+let deck,Y,B,C,stage=0,botEls=[];
+$('go').onclick=async()=>{
+  const btn=$('go');btn.disabled=true;
+  if(stage===0){
+    deck=CT.newDeck();Y=[deck.pop(),deck.pop()];B=[deck.pop(),deck.pop()];C=[];botEls=[];
+    ['bot','board','you'].forEach(i=>$(i).innerHTML='');$('bh').textContent='';$('yh').textContent='';
+    $('status').textContent='Dealing…';
+    await CT.deal($('you'),Y[0],{faceUp:true});botEls.push(await CT.deal($('bot'),B[0]));
+    await CT.deal($('you'),Y[1],{faceUp:true});botEls.push(await CT.deal($('bot'),B[1]));
+    $('yh').textContent='— '+NAMES[best(Y)[0]];$('status').textContent='Ready for the flop.';btn.textContent='Flop';stage=1;
+  }else if(stage<=3){
+    const n=stage===1?3:1;
+    for(let i=0;i<n;i++){const c=deck.pop();C.push(c);await CT.deal($('board'),c,{faceUp:true,delay:i*120});}
+    $('yh').textContent='— '+NAMES[best([...Y,...C])[0]];
+    $('status').textContent=stage===1?'Ready for the turn.':stage===2?'Ready for the river.':'Ready for the showdown.';
+    btn.textContent=['','Turn','River','Showdown'][stage];stage++;
+  }else{
+    await Promise.all(botEls.map(CT.flip));
+    const a=best([...Y,...C]),b=best([...B,...C]),r=cmp(a,b);
+    $('bh').textContent='— '+NAMES[b[0]];
+    $('status').textContent=(r>0?'You win! ':r<0?'Computer wins. ':'Split pot — tie. ')+'You: '+NAMES[a[0]]+'. Computer: '+NAMES[b[0]]+'.';
+    btn.textContent='Deal new hand';stage=0;
+  }
+  btn.disabled=false;
+};
+</script></body></html>

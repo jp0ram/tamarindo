@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Card Table</title><link rel="stylesheet" href="style.css"></head>
+<body><div class="wrap">
+<div class="hero"><h1>Card Table</h1><p class="sub">Pick your deck, then take a seat.</p></div>
+<div class="carousel">
+  <button class="btn arrow" id="prev" aria-label="Previous deck">‹</button>
+  <div class="viewport" id="viewport"><div class="track" id="track"></div></div>
+  <button class="btn arrow" id="next" aria-label="Next deck">›</button>
+</div>
+<p class="section-title">Choose a game</p>
+<div class="games">
+  <a class="game-link" data-game="bus"><h2>Ride the Bus</h2><p>Four guesses, one card each.</p></a>
+  <a class="game-link" data-game="blackjack"><h2>Blackjack</h2><p>Beat the dealer to 21.</p></a>
+  <a class="game-link" data-game="poker"><h2>Texas Hold’em</h2><p>Flop, turn, river, showdown.</p></a>
+</div></div>
+<script src="decks.js"></script><script src="shared.js"></script>
+<script>
+let sel = CT.getDeckIndex();
+const track = document.getElementById('track'), vp = document.getElementById('viewport');
+CT.DECKS.forEach((d, i) => {
+  const b = document.createElement('button'); b.className = 'deck';
+  b.setAttribute('aria-label', d.name + ' deck');
+  const back = CT.backEl(); back.style.setProperty('--back-img', d.src ? `url("${d.src}")` : 'none');
+  const n = document.createElement('div'); n.textContent = d.name;
+  b.append(back, n); b.onclick = () => select(i); track.appendChild(b);
+});
+function select(i) {
+  sel = (i + CT.DECKS.length) % CT.DECKS.length; CT.setDeckIndex(sel); CT.applyBack(sel);
+  [...track.children].forEach((c, k) => { c.classList.toggle('sel', k === sel); c.setAttribute('aria-pressed', k === sel); });
+  const c = track.children[sel];
+  track.style.transform = `translateX(${vp.clientWidth / 2 - (c.offsetLeft + c.offsetWidth / 2)}px)`;
+}
+document.getElementById('prev').onclick = () => select(sel - 1);
+document.getElementById('next').onclick = () => select(sel + 1);
+addEventListener('resize', () => select(sel));
+select(sel);
+</script></body></html>

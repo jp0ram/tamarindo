@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ride the Bus · Card Table</title><link rel="stylesheet" href="style.css"></head>
+<body><div class="wrap">
+<div class="topbar"><a class="btn menu-link" href="index.html">← Main menu</a><h2>Ride the Bus</h2></div>
+<p class="rules">Predict four cards in a row: red or black, higher or lower, inside or outside, then the suit. Ties count as wrong. Miss one and the ride is over.</p>
+<div class="table"><div class="pile"></div>
+<span class="pill" id="round">Round 1 of 4</span>
+<div class="cards" id="cards"></div>
+<div class="status" id="status"></div>
+<div class="controls" id="opts"></div>
+<div class="controls"><button class="btn primary" id="again">New ride</button></div>
+</div></div>
+<script src="decks.js"></script><script src="shared.js"></script>
+<script>CT.init();
+
+const $=id=>document.getElementById(id);
+const Q=[
+ {t:'Red or black?',o:['Red','Black'],f:(a,c,h)=>(a==='Red')===CT.isRed(c)},
+ {t:'Higher or lower than the first card?',o:['Higher','Lower'],f:(a,c,h)=>a==='Higher'?c.v>h[0].v:c.v<h[0].v},
+ {t:'Inside or outside the first two cards?',o:['Inside','Outside'],f:(a,c,h)=>{const lo=Math.min(h[0].v,h[1].v),hi=Math.max(h[0].v,h[1].v);return (a==='Inside')===(c.v>lo&&c.v<hi);}},
+ {t:'Which suit?',o:CT.SUITS,f:(a,c)=>a===c.s}
+];
+let run=0;
+async function ride(){
+  const id=++run, deck=CT.newDeck(), hand=[]; $('cards').innerHTML='';$('opts').innerHTML='';
+  for(let i=0;i<4;i++){
+    $('round').textContent='Round '+(i+1)+' of 4'; $('status').textContent=Q[i].t;
+    const a=await new Promise(res=>{$('opts').innerHTML='';Q[i].o.forEach(l=>{const b=document.createElement('button');b.className='btn';b.textContent=l;b.onclick=()=>{$('opts').innerHTML='';res(l)};$('opts').appendChild(b);});});
+    if(id!==run)return;
+    const c=deck.pop(); const el=await CT.deal($('cards'),c); if(id!==run)return; await CT.flip(el);
+    const ok=Q[i].f(a,c,hand); hand.push(c);
+    if(!ok){$('status').textContent='Wrong — it was '+c.r+c.s+'. Ride over.';$('round').textContent='Game over';return;}
+    if(i<3){$('status').textContent='Correct! '+c.r+c.s; await CT.sleep(900); if(id!==run)return;}
+    else{$('status').textContent='You completed the ride!';$('round').textContent='Winner';el.classList.add('win');}
+  }
+}
+$('again').onclick=ride; ride();
+</script></body></html>

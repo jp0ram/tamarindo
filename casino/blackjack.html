@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Blackjack · Card Table</title><link rel="stylesheet" href="style.css"></head>
+<body><div class="wrap">
+<div class="topbar"><a class="btn menu-link" href="index.html">← Main menu</a><h2>Blackjack</h2></div>
+<p class="rules">Beat the dealer without going over 21. Dealer stands on 17. No betting.</p>
+<div class="table"><div class="pile"></div>
+<div class="label">Dealer <span id="dt"></span></div><div class="cards" id="dealer"></div>
+<div class="label">You <span id="pt"></span></div><div class="cards" id="player"></div>
+<div class="status" id="status">Press Deal to start.</div>
+<div class="controls"><button class="btn primary" id="deal">Deal</button><button class="btn" id="hit" disabled>Hit</button><button class="btn" id="stand" disabled>Stand</button></div>
+</div></div>
+<script src="decks.js"></script><script src="shared.js"></script>
+<script>CT.init();
+
+const $=id=>document.getElementById(id);
+let deck,P,D,DE,over=true,hole,busy=false;
+const total=h=>{let s=0,a=0;h.forEach(c=>{if(c.v===14){s+=11;a++}else s+=Math.min(c.v,10)});while(s>21&&a){s-=10;a--}return s};
+const btns=(d,h,s)=>{$('deal').disabled=d;$('hit').disabled=h;$('stand').disabled=s};
+const upd=(rev)=>{$('pt').textContent='('+total(P)+')';$('dt').textContent='('+(rev?total(D):'?')+')'};
+async function finish(msg){over=true;if(!hole.classList.contains('up'))await CT.flip(hole);upd(true);$('status').textContent=msg;btns(false,true,true);busy=false;}
+$('deal').onclick=async()=>{
+  busy=true;btns(true,true,true);deck=CT.newDeck();P=[];D=[];over=false;$('player').innerHTML='';$('dealer').innerHTML='';$('status').textContent='Dealing…';$('pt').textContent='';$('dt').textContent='';
+  P.push(deck.pop());await CT.deal($('player'),P[0],{faceUp:true});
+  D.push(deck.pop());await CT.deal($('dealer'),D[0],{faceUp:true});
+  P.push(deck.pop());await CT.deal($('player'),P[1],{faceUp:true});
+  D.push(deck.pop());hole=await CT.deal($('dealer'),D[1]);
+  upd(false);
+  const pb=total(P)===21,db=total(D)===21;
+  if(pb||db){await finish(pb&&db?'Both have blackjack — push.':pb?'Blackjack! You win.':'Dealer has blackjack.');return;}
+  $('status').textContent='Hit or stand.';btns(true,false,false);busy=false;
+};
+$('hit').onclick=async()=>{
+  if(over||busy)return;busy=true;btns(true,true,true);
+  const c=deck.pop();P.push(c);await CT.deal($('player'),c,{faceUp:true});upd(false);
+  if(total(P)>21){await finish('Bust — dealer wins.');return;}
+  if(total(P)===21){busy=false;$('stand').onclick();return;}
+  btns(true,false,false);busy=false;
+};
+$('stand').onclick=async()=>{
+  if(over||busy)return;busy=true;btns(true,true,true);
+  await CT.flip(hole);upd(true);
+  while(total(D)<17){await CT.sleep(300);const c=deck.pop();D.push(c);await CT.deal($('dealer'),c,{faceUp:true});upd(true);}
+  const p=total(P),d=total(D);
+  await finish(d>21?'Dealer busts — you win!':p>d?'You win!':p<d?'Dealer wins.':'Push — tie.');
+};
+</script></body></html>
