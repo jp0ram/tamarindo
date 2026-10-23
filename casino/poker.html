@@ -27,9 +27,15 @@ function five(cs){
   if(flush)return[5,...vals];if(sh)return[4,sh];if(g[0].n===3)return[3,...ks];
   if(g[0].n===2&&g[1].n===2)return[2,...ks];if(g[0].n===2)return[1,...ks];return[0,...vals];
 }
-const best=cs=>combos(cs,5).map(five).sort((a,b)=>cmp(b,a))[0];
+const best=cs=>{
+  if(cs.length<5){const v=cs.map(c=>c.v).sort((a,b)=>b-a);return (v.length>1&&v[0]===v[1])?[1,v[0]]:[0,...v];}
+  return combos(cs,5).map(five).sort((a,b)=>cmp(b,a))[0];
+};
 let deck,Y,B,C,stage=0,botEls=[];
 $('go').onclick=async()=>{
+  try{await step();}catch(e){console.error(e);}finally{$('go').disabled=false;}
+};
+async function step(){
   const btn=$('go');btn.disabled=true;
   if(stage===0){
     deck=CT.newDeck();Y=[deck.pop(),deck.pop()];B=[deck.pop(),deck.pop()];C=[];botEls=[];
@@ -51,6 +57,5 @@ $('go').onclick=async()=>{
     $('status').textContent=(r>0?'You win! ':r<0?'Computer wins. ':'Split pot — tie. ')+'You: '+NAMES[a[0]]+'. Computer: '+NAMES[b[0]]+'.';
     btn.textContent='Deal new hand';stage=0;
   }
-  btn.disabled=false;
-};
+}
 </script></body></html>
