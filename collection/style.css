@@ -1,0 +1,25 @@
+:root{--bg:#121214;--panel:#1b1b1f;--line:#2c2c33;--text:#e9e6df;--mute:#9a97a0;--accent:#e8b04a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:17px/1.6 Georgia,"Times New Roman",serif}
+nav{display:flex;gap:10px;flex-wrap:wrap;padding:18px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+nav a{color:var(--text);text-decoration:none;border:1px solid var(--line);padding:7px 16px;border-radius:999px;font:15px system-ui,sans-serif;transition:background .2s,border-color .2s}
+nav a:hover,nav a:focus-visible{border-color:var(--accent);background:var(--panel);outline:none}
+nav a.on{background:var(--accent);color:#161616;border-color:var(--accent)}
+header.top{max-width:1000px;margin:48px auto 8px;padding:0 24px}
+h1{font-size:clamp(2.2rem,6vw,3.6rem);margin:0;font-weight:400;letter-spacing:-.02em}
+header.top p{color:var(--mute);margin:6px 0 0}
+main{max-width:1000px;margin:0 auto;padding:16px 24px 80px}
+.album{display:grid;grid-template-columns:260px 1fr;gap:36px;padding:44px 0;border-bottom:1px solid var(--line)}
+.cover{display:block;width:260px;height:260px;overflow:visible}
+.cover img{width:100%;height:100%;object-fit:cover;display:block;background:var(--panel);box-shadow:0 6px 18px #0008;transition:transform .25s ease,box-shadow .25s ease}
+.cover:hover img,.cover:focus-visible img{transform:translateY(-10px) scale(1.04);box-shadow:0 22px 36px #000a}
+.cover:focus-visible{outline:2px solid var(--accent);outline-offset:6px}
+h2{margin:0;font-size:1.9rem;font-weight:400;line-height:1.2}
+.meta{color:var(--mute);font:15px system-ui,sans-serif;margin:6px 0 14px}
+.meta b{color:var(--accent);font-weight:500}
+.tag{display:inline-block;margin-left:8px;font-size:12px;border:1px dashed var(--mute);padding:0 8px;border-radius:99px}
+ol{margin:0;padding-left:1.6em;columns:2;column-gap:32px;font-size:15.5px}
+li{break-inside:avoid;color:#d3d0c9}
+footer{text-align:center;color:var(--mute);font:14px system-ui,sans-serif;padding:0 0 40px}
+@media(max-width:720px){.album{grid-template-columns:1fr;justify-items:center;text-align:left}.cover{width:min(300px,80vw);height:min(300px,80vw)}ol{columns:1}.info{width:100%}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
