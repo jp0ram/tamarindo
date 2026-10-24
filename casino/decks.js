@@ -2,6 +2,7 @@
    If an image is missing, a classic patterned back is shown instead. */
 window.DECKS = [
   { name: "Basic Red",  src: "/casino/decks/basic.jpg" },
+  { name: "Basic Blue",  src: "/casino/decks/basic2.jpg" },
   { name: "Azteca", src: "/casino/decks/azteca.jpg" },
   { name: "Balatro",  src: "/casino/decks/balatro.jpg" },
   { name: "Arizona",    src: "/casino/decks/arizona.jpg" },
