@@ -5,7 +5,7 @@ window.DECKS = [
   { name: "Azteca", src: "/casino/decks/azteca.jpg" },
   { name: "Balatro",  src: "/casino/decks/balatro.jpg" },
   { name: "Arizona",    src: "/casino/decks/arizona.jpg" },
-  { name: "Cancun",     src: "/casino/decks/cancun.jpg" }
+  { name: "Cancun",     src: "/casino/decks/cancun.jpg" },
   { name: "Illusions",  src: "/casino/decks/illusion.jpg" },
   { name: "Flight", src: "/casino/decks/flight.jpg" },
   { name: "America",  src: "/casino/decks/america.jpg" },
