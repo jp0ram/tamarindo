@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TCMX · Tetris Competitivo MX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&display=swap">
+<style>
+:root {
+  color-scheme: dark;
+  --black: #000;
+  --gold: #d4a514;
+  --gold-bright: #f0c030;
+  --gold-deep: #8a6a08;
+  --b: min(4.6vw, 26px);
+  --gap: 3px;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--black);
+  color: var(--gold);
+  font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  min-height: 100vh;
+}
+nav {
+  background: var(--gold);
+  color: var(--black);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px clamp(16px, 4vw, 40px);
+  flex-wrap: wrap;
+}
+nav .brand { font-weight: 800; font-size: 1.5rem; letter-spacing: 0.02em; color: var(--black); text-decoration: none; }
+nav ul { list-style: none; display: flex; gap: clamp(12px, 3vw, 32px); margin: 0; padding: 0; flex-wrap: wrap; }
+nav a { color: var(--black); text-decoration: none; font-weight: 700; padding: 4px 2px; border-bottom: 3px solid transparent; }
+nav ul a:hover { border-bottom-color: var(--black); }
+a:focus-visible { outline: 3px solid var(--gold-bright); outline-offset: 3px; }
+nav a:focus-visible { outline-color: var(--black); }
+
+main { max-width: 960px; margin: 0 auto; padding: clamp(32px, 7vw, 72px) 20px 64px; }
+.hero { text-align: center; }
+.eq { display: flex; align-items: flex-end; justify-content: center; gap: var(--gap); margin: 0 auto; }
+.eq .col { display: flex; flex-direction: column-reverse; gap: var(--gap); }
+.eq .blk { width: var(--b); height: var(--b); background: var(--gold); }
+.hero h1 { font-weight: 800; font-size: clamp(4rem, 16vw, 8.5rem); line-height: 1; margin: 18px 0 4px; letter-spacing: -0.01em; }
+.hero p { font-weight: 700; font-size: clamp(1.1rem, 3vw, 1.6rem); margin: 0; }
+.base { margin-top: 18px; }
+
+.menu { list-style: none; padding: 0; margin: clamp(40px, 8vw, 72px) 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+.menu a {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  min-height: 120px; padding: 20px;
+  border: 4px solid var(--gold); background: var(--black); color: var(--gold);
+  font-weight: 800; font-size: 1.4rem; text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.menu a:hover, .menu a:focus-visible { background: var(--gold); color: var(--black); }
+.menu a:active { background: var(--gold-bright); }
+@media (prefers-reduced-motion: reduce) { .menu a { transition: none; } }
+footer { text-align: center; color: var(--gold-deep); font-weight: 500; padding: 0 20px 32px; }
+</style>
+</head>
+<body>
+<nav>
+  <a class="brand" href="index.html">TCMX</a>
+  <ul>
+    <li><a href="https://discord.gg/9JfBgkkpjA">Discord</a></li>
+    <li><a href="info.html">Sobre Nosotros</a></li>
+  </ul>
+</nav>
+
+<main>
+  <section class="hero">
+    <div class="eq" id="eq" aria-hidden="true"></div>
+    <h1>TCMX</h1>
+    <p>Tetris Competitivo MX</p>
+    <div class="eq base" id="base" aria-hidden="true"></div>
+  </section>
+
+  <ul class="menu">
+    <li><a href="https://discord.gg/9JfBgkkpjA">Únete al Discord</a></li>
+    <li><a href="info.html">Sobre Nosotros</a></li>
+    <li><a href="TCMXIceberg.png">Iceberg</a></li>
+  </ul>
+</main>
+
+<footer>Tetris Competitivo MX</footer>
+
+<script>
+// Equalizer of Tetris blocks, echoing the logo
+var heights = [3, 4, 5, 4, 6, 7, 5, 4, 6, 8, 5, 4, 5, 3];
+var eq = document.getElementById("eq");
+heights.forEach(function (h) {
+  var col = document.createElement("div");
+  col.className = "col";
+  for (var i = 0; i < h; i++) {
+    var b = document.createElement("div");
+    b.className = "blk";
+    col.appendChild(b);
+  }
+  eq.appendChild(col);
+});
+var base = document.getElementById("base");
+heights.forEach(function () {
+  var b = document.createElement("div");
+  b.className = "blk";
+  base.appendChild(b);
+});
+</script>
+</body>
+</html>
