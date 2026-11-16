@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Graphwar</title>
+<style>
+:root{--bg:#f6f5f1;--fg:#1d1d1f;--mut:#6b6b72;--card:#fff;--line:#d8d6cf;--grid:#e8e6e0;--axis:#555;--acc:#2f6fed;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#16171a;--fg:#ececf0;--mut:#9a9aa6;--card:#1f2024;--line:#33343a;--grid:#2c2d33;--axis:#9a9aa6}}
+:root[data-theme="dark"]{--bg:#16171a;--fg:#ececf0;--mut:#9a9aa6;--card:#1f2024;--line:#33343a;--grid:#2c2d33;--axis:#9a9aa6}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:860px;margin:0 auto;padding:14px}
+h1{font-size:20px;margin:0 0 4px}
+#status{font-weight:600;min-height:1.5em}
+canvas{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+input[type=text]{flex:1 1 240px;min-width:0;font:16px ui-monospace,Menlo,Consolas,monospace;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg)}
+button,select{font:inherit;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+button:disabled{opacity:.5;cursor:default}
+label{color:var(--mut);display:flex;gap:6px;align-items:center}
+#err{color:#e5484d;min-height:1.3em;font-size:14px}
+details{color:var(--mut);font-size:14px}
+code{background:var(--card);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+</style></head><body><main>
+<h1>Graphwar</h1>
+<div id="status"></div>
+<canvas id="c" width="800" height="480"></canvas>
+<div id="err"></div>
+<div class="row">
+<input id="eq" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Equation">
+<button class="pri" id="fire">Fire</button>
+<button id="rnd" title="Auto-generate an equation that hits an enemy">🎲 Generate</button>
+</div>
+<div class="row">
+<label>Mode <select id="mode"><option value="0">Function y = f(x)</option><option value="1">1st-order ODE y&#8242; = f</option><option value="2">2nd-order ODE y&#8243; = f</option></select></label>
+<label>Soldiers <select id="n"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></label>
+<label><input type="checkbox" id="cpu"> CPU plays Player 2</label>
+<span id="ang" style="color:var(--mut)"></span>
+<button id="new">New game</button>
+</div>
+<details><summary>How to play</summary>
+<p>Players alternate turns, each controlling one soldier at a time. Type an equation and fire: the shot follows the graph, starting at your soldier. In function mode the graph is shifted by a constant so it passes through your soldier. In the ODE modes your soldier is the initial condition, and in 2nd-order mode the up and down arrow keys change the firing angle. The plane runs from x = -25 to 25 and y = -15 to 15. Player 2 shoots leftwards, so their x-axis is mirrored (the same equation gives the same shape for both players).</p>
+<p>Syntax: <code>x</code> <code>y</code> <code>y'</code>, <code>+ - * / ^</code>, <code>sqrt log ln abs sin cos tan exp</code>, plus <code>pi</code> and <code>e</code>. Use parentheses: 1/x+2 means (1/x)+2. Shots explode on terrain, edges, invalid values (like sqrt of a negative) or when they get too long. Hitting a teammate kills them too.</p></details>
+</main>
+<script>
+"use strict";
+const $=id=>document.getElementById(id),cv=$("c"),ctx=cv.getContext("2d"),S=16,W=800,H=480,MAXL=220;
+const T=document.createElement("canvas");T.width=W;T.height=H;const tc=T.getContext("2d",{willReadFrequently:true});
+let TD=null;
+const COL=["#e5484d","#3b82f6"],NAME=["Player 1 🔴","Player 2 🔵"];
+const FN={sqrt:Math.sqrt,log:Math.log10,ln:Math.log,abs:Math.abs,sin:Math.sin,cos:Math.cos,tan:Math.tan,exp:Math.exp};
+function compile(src){
+  src=src.toLowerCase().replace(/\s+/g,"").replace(/^y('{0,2})=/,"");
+  if(!src)throw new Error("Type an equation first.");
+  const tk=src.match(/\d+\.?\d*|\.\d+|y'|[a-z]+|[-+*\/^(),]/g)||[];
+  if(tk.join("")!==src)throw new Error("Unknown character in equation.");
+  let p=0;const pk=()=>tk[p],nx=()=>tk[p++];
+  const isOp=t=>t===undefined||/^[-+*\/^),]$/.test(t);
+  function expr(){let a=term();while(pk()==="+"||pk()==="-"){const o=nx(),b=term(),l=a;a=o==="+"?(x,y,q)=>l(x,y,q)+b(x,y,q):(x,y,q)=>l(x,y,q)-b(x,y,q)}return a}
+  function term(){let a=un();for(;;){const t=pk();let o;
+    if(t==="*"||t==="/"){o=nx()}else if(!isOp(t)){o="*"}else break;
+    const b=un(),l=a;a=o==="*"?(x,y,q)=>l(x,y,q)*b(x,y,q):(x,y,q)=>l(x,y,q)/b(x,y,q)}return a}
+  function un(){if(pk()==="-"){nx();const a=un();return(x,y,q)=>-a(x,y,q)}if(pk()==="+"){nx();return un()}return pw()}
+  function pw(){const a=at();if(pk()==="^"){nx();const b=un();return(x,y,q)=>Math.pow(a(x,y,q),b(x,y,q))}return a}
+  function at(){const t=nx();
+    if(t===undefined)throw new Error("Equation ends unexpectedly.");
+    if(/^[\d.]/.test(t)){const v=parseFloat(t);return()=>v}
+    if(t==="x")return x=>x;if(t==="y")return(x,y)=>y;if(t==="y'")return(x,y,q)=>q;
+    if(t==="e")return()=>Math.E;if(t==="pi")return()=>Math.PI;
+    if(t==="(" ){const a=expr();if(nx()!==")")throw new Error("Missing closing parenthesis.");return a}
+    if(FN[t]){if(nx()!=="(")throw new Error("Use "+t+"( … ) with parentheses.");const a=expr(),f=FN[t];if(nx()!==")")throw new Error("Missing closing parenthesis.");return(x,y,q)=>f(a(x,y,q))}
+    throw new Error("Unknown name “"+t+"”.")}
+  const f=expr();if(p<tk.length)throw new Error("Unexpected “"+tk[p]+"”.");return f}
+
+let G={};
+const rn=(a,b)=>+(a+Math.random()*(b-a)).toFixed(2),sg=()=>Math.random()<.5?-1:1,pick=a=>a[Math.random()*a.length|0],q=v=>v<0?"("+v+")":v;
+const cur=()=>G.teams[G.turn][G.idx[G.turn]];
+const nextAlive=(t,s)=>{const L=G.teams[t].length;for(let k=0;k<L;k++){const i=(s+k)%L;if(G.teams[t][i].alive)return i}return 0};
+function newGame(){
+  const n=+$("n").value;G={teams:[[],[]],turn:0,idx:[0,0],busy:false,over:false,ang:[0,0],last:["",""],shot:null,boom:null};
+  tc.globalCompositeOperation="source-over";tc.clearRect(0,0,W,H);tc.fillStyle="#8a8f98";
+  const P=(x,y)=>[(x+25)*S,(15-y)*S];
+  for(let i=0;i<8;i++){const cx=rn(-17,17),cy=rn(-12,12);for(let j=0;j<4;j++){const[a,b]=P(cx+rn(-2,2),cy+rn(-1.5,1.5));tc.beginPath();tc.arc(a,b,rn(1,3)*S,0,7);tc.fill()}}
+  const all=[];
+  for(let t=0;t<2;t++)for(let i=0;i<n;i++){let x,y,k=0;do{x=rn(4,23)*(t?1:-1);y=rn(-12.5,12.5);k++}while(k<300&&all.some(s=>Math.hypot(s.x-x,s.y-y)<4.5));
+    const s={x,y,t,alive:true};all.push(s);G.teams[t].push(s)}
+  tc.globalCompositeOperation="destination-out";
+  all.forEach(s=>{const[a,b]=P(s.x,s.y);tc.beginPath();tc.arc(a,b,2.3*S,0,7);tc.fill()});
+  tc.globalCompositeOperation="source-over";readT();startTurn()}
+function readT(){TD=tc.getImageData(0,0,W,H).data}
+const terr=(x,y)=>{const a=Math.floor((x+25)*S),b=Math.floor((15-y)*S);return a>=0&&b>=0&&a<W&&b<H&&TD[(b*W+a)*4+3]>100};
+function startTurn(){
+  G.idx[G.turn]=nextAlive(G.turn,G.idx[G.turn]);G.busy=false;
+  $("eq").value=G.last[G.turn];$("err").textContent="";status();
+  const mode=+$("mode").value;$("eq").placeholder=["e.g. sin(x/6)*4","e.g. y' = 2*sin(x/5)","e.g. y'' = -y/3"][mode];
+  uiLock(false);
+  if(G.turn===1&&$("cpu").checked&&!G.over){uiLock(true);setTimeout(()=>{if(G.over||G.turn!==1||G.busy)return;auto(true);fire()},800)}}
+function uiLock(b){["fire","rnd","eq"].forEach(i=>$(i).disabled=b||G.over||(G.busy&&i!=="x"))}
+function status(){
+  if(G.over)return;const s=cur();$("status").textContent=NAME[G.turn]+" — soldier "+(G.teams[G.turn].indexOf(s)+1)+" of "+G.teams[G.turn].filter(a=>a.alive).length+" left";
+  $("ang").textContent=$("mode").value==="2"?"Angle "+G.ang[G.turn]+"° (↑/↓)":""}
+
+function sim(sh,f,mode,ang){
+  const sgn=sh.t?-1:1,h=.04,pts=[[sh.x,sh.y]];let X=sgn*sh.x,y=sh.y,p=Math.tan(ang*Math.PI/180),c=0,len=0,px=sh.x,py=sh.y,end=null;
+  if(mode===0)c=sh.y-f(X,0,0);
+  for(let k=0;k<5000&&!end;k++){let ny;
+    if(mode===0){X+=h;ny=f(X,0,0)+c}
+    else if(mode===1){const k1=f(X,y,0),k2=f(X+h/2,y+h/2*k1,0),k3=f(X+h/2,y+h/2*k2,0),k4=f(X+h,y+h*k3,0);y+=h/6*(k1+2*k2+2*k3+k4);X+=h;ny=y}
+    else{const a1=p,b1=f(X,y,p),a2=p+h/2*b1,b2=f(X+h/2,y+h/2*a1,a2),a3=p+h/2*b2,b3=f(X+h/2,y+h/2*a2,a3),a4=p+h*b3,b4=f(X+h,y+h*a3,a4);
+      y+=h/6*(a1+2*a2+2*a3+a4);p+=h/6*(b1+2*b2+2*b3+b4);X+=h;ny=y}
+    const nxx=sgn*X;
+    if(!isFinite(ny)){end={type:"invalid",x:px,y:py};break}
+    const d=Math.hypot(nxx-px,ny-py),m=Math.max(1,Math.ceil(d/.1));
+    for(let j=1;j<=m;j++){const qx=px+(nxx-px)*j/m,qy=py+(ny-py)*j/m;len+=d/m;
+      if(Math.abs(qx)>25||Math.abs(qy)>15){end={type:"edge",x:Math.max(-25,Math.min(25,qx)),y:Math.max(-15,Math.min(15,qy))};break}
+      if(terr(qx,qy)){end={type:"terrain",x:qx,y:qy};break}
+      let hs=null;for(const t of G.teams)for(const s of t)if(s.alive&&(s!==sh||len>1.6)&&Math.hypot(s.x-qx,s.y-qy)<.95)hs=s;
+      if(hs){end={type:"soldier",x:qx,y:qy,s:hs};break}
+      if(len>MAXL){end={type:"length",x:qx,y:qy};break}
+      pts.push([qx,qy])}
+    px=nxx;py=ny}
+  if(!end)end={type:"length",x:px,y:py};pts.push([end.x,end.y]);return{pts,end}}
+
+function fire(){
+  if(G.busy||G.over)return;const mode=+$("mode").value;let f;
+  try{f=compile($("eq").value)}catch(e){$("err").textContent=e.message;return}
+  $("err").textContent="";G.last[G.turn]=$("eq").value;
+  const sh=cur(),r=sim(sh,f,mode,mode===2?G.ang[G.turn]:0);
+  G.shot={pts:r.pts,end:r.end,i:0,t:G.turn};G.busy=true;uiLock(true)}
+function resolve(){
+  const e=G.shot.end,t=G.shot.t;G.shot=null;
+  if(e.type==="terrain"){tc.globalCompositeOperation="destination-out";tc.beginPath();tc.arc((e.x+25)*S,(15-e.y)*S,1.7*S,0,7);tc.fill();tc.globalCompositeOperation="source-over";readT()}
+  if(e.type==="soldier")e.s.alive=false;
+  G.boom={x:e.x,y:e.y,k:0};
+  G.idx[t]=nextAlive(t,G.idx[t]+1)}
+function endBoom(){
+  G.boom=null;const a=G.teams.map(t=>t.some(s=>s.alive));
+  if(!a[0]||!a[1]){G.over=true;$("status").textContent=!a[0]&&!a[1]?"Draw!":(a[0]?NAME[0]:NAME[1])+" wins! 🎉";uiLock(true);return}
+  G.turn^=1;startTurn()}
+
+function genExpr(mode){
+  if(mode===0)return[pick([()=>q(rn(-1,1))+"*x",()=>"(x^2)/"+q(sg()*Math.round(rn(25,120))),()=>rn(2,12)+"*sin(x/"+rn(2,12)+")",()=>rn(2,10)+"*sin(x/"+rn(3,12)+")+"+q(rn(-.8,.8))+"*x",()=>rn(-.05,.05)+"*x^2+"+q(rn(-.8,.8))+"*x"])(),0];
+  if(mode===1)return[pick([()=>""+q(rn(-1.2,1.2)),()=>rn(1,6)+"*sin(x/"+rn(2,10)+")",()=>"-y/"+rn(2,12),()=>rn(1,5)+"*cos(x/"+rn(2,8)+")-y/"+rn(5,20),()=>"("+q(rn(-8,8))+"-y)/"+rn(3,15)])(),0];
+  return[pick([()=>"-y*"+rn(.05,1),()=>rn(1,6)+"*sin(x/"+rn(2,8)+")",()=>"-y/"+rn(2,10)+"-y'*"+rn(.1,.8),()=>q(rn(-2,2))+"-y*"+rn(.1,.6)])(),Math.round(rn(-50,50))]}
+function auto(quick){
+  const mode=+$("mode").value,sh=cur();let best=null,bd=1e9;
+  for(let k=0;k<(quick?150:700);k++){const[ex,an]=genExpr(mode);let r;try{r=sim(sh,compile(ex),mode,an)}catch(e){continue}
+    if(r.end.type==="soldier"&&r.end.s.t!==sh.t){best={ex,an};break}
+    if(r.end.type==="invalid")continue;
+    let d=1e9;G.teams[1-sh.t].forEach(s=>{if(s.alive)for(let i=0;i<r.pts.length;i+=8)d=Math.min(d,Math.hypot(s.x-r.pts[i][0],s.y-r.pts[i][1]))});
+    if(d<bd){bd=d;best={ex,an}}}
+  if(best){$("eq").value=(mode?"y"+"'".repeat(mode)+" = ":"y = ")+best.ex;if(mode===2){G.ang[G.turn]=best.an;status()}}}
+
+function draw(){
+  const cs=getComputedStyle(document.documentElement),C=n=>cs.getPropertyValue(n).trim();
+  ctx.fillStyle=C("--card");ctx.fillRect(0,0,W,H);
+  ctx.font="10px system-ui";ctx.fillStyle=C("--axis");ctx.lineWidth=1;
+  for(let x=-25;x<=25;x+=5){ctx.strokeStyle=C("--grid");ctx.beginPath();ctx.moveTo((x+25)*S,0);ctx.lineTo((x+25)*S,H);ctx.stroke();if(x)ctx.fillText(x,(x+25)*S+2,15*S+11)}
+  for(let y=-15;y<=15;y+=5){ctx.strokeStyle=C("--grid");ctx.beginPath();ctx.moveTo(0,(15-y)*S);ctx.lineTo(W,(15-y)*S);ctx.stroke();if(y)ctx.fillText(y,25*S+3,(15-y)*S-2)}
+  ctx.strokeStyle=C("--axis");ctx.beginPath();ctx.moveTo(0,15*S);ctx.lineTo(W,15*S);ctx.moveTo(25*S,0);ctx.lineTo(25*S,H);ctx.stroke();
+  ctx.drawImage(T,0,0);
+  if(G.teams){const c=G.over?null:cur();
+    G.teams.forEach(t=>t.forEach(s=>{const a=(s.x+25)*S,b=(15-s.y)*S;
+      if(!s.alive){ctx.strokeStyle="#888";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(a-6,b-6);ctx.lineTo(a+6,b+6);ctx.moveTo(a+6,b-6);ctx.lineTo(a-6,b+6);ctx.stroke();return}
+      ctx.fillStyle=COL[s.t];ctx.beginPath();ctx.arc(a,b,.9*S,0,7);ctx.fill();ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.stroke();
+      if(s===c){ctx.strokeStyle=C("--fg");ctx.lineWidth=2;ctx.beginPath();ctx.arc(a,b,1.5*S,0,7);ctx.stroke();
+        if(!G.busy&&$("mode").value==="2"){const an=G.ang[G.turn]*Math.PI/180,d=s.t?-1:1;ctx.beginPath();ctx.moveTo(a,b);ctx.lineTo(a+d*Math.cos(an)*3.5*S,b-Math.sin(an)*3.5*S);ctx.stroke()}}}));
+    const sh=G.shot;
+    if(sh){sh.i=Math.min(sh.pts.length-1,sh.i+14);ctx.strokeStyle=COL[sh.t];ctx.lineWidth=2.5;ctx.beginPath();
+      sh.pts.slice(0,sh.i+1).forEach((p,i)=>{const a=(p[0]+25)*S,b=(15-p[1])*S;i?ctx.lineTo(a,b):ctx.moveTo(a,b)});ctx.stroke();
+      if(sh.i>=sh.pts.length-1)resolve()}
+    const bm=G.boom;
+    if(bm){bm.k++;const r=bm.k*1.6;ctx.fillStyle="rgba(255,160,40,"+Math.max(0,.8-bm.k/30)+")";ctx.beginPath();ctx.arc((bm.x+25)*S,(15-bm.y)*S,r,0,7);ctx.fill();if(bm.k>28)endBoom()}}
+  requestAnimationFrame(draw)}
+
+$("fire").onclick=fire;$("rnd").onclick=()=>{if(!G.busy&&!G.over)auto(false)};$("new").onclick=newGame;$("n").onchange=newGame;
+$("mode").onchange=()=>{if(G.teams){$("eq").value="";G.last=["",""];status();$("eq").placeholder=["e.g. sin(x/6)*4","e.g. y' = 2*sin(x/5)","e.g. y'' = -y/3"][+$("mode").value]}};
+$("eq").addEventListener("keydown",e=>{if(e.key==="Enter")fire()});
+addEventListener("keydown",e=>{if(G.busy||G.over||$("mode").value!=="2")return;
+  if(e.key==="ArrowUp"||e.key==="ArrowDown"){e.preventDefault();G.ang[G.turn]=Math.max(-80,Math.min(80,G.ang[G.turn]+(e.key==="ArrowUp"?2:-2)));status()}});
+newGame();draw();
+</script></body></html>
